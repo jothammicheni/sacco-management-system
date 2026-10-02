@@ -1,0 +1,60 @@
+server:
+  port: 8087
+
+spring:
+  application:
+    name: sacco-account-service
+
+  # =============================================
+  # KAFKA - CONSUMER + PRODUCER
+  # =============================================
+  kafka:
+    bootstrap-servers: localhost:9092
+
+    # ------------------ CONSUMER ------------------
+    # Account Service consumes member.* events from Member Service.
+    # Producer publishes pre-serialized JSON strings (because of the outbox
+    # pattern), so the consumer must also read strings and parse manually.
+    consumer:
+      group-id: sacco-account-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+    # ------------------ PRODUCER ------------------
+    # Outbox publisher sends pre-serialized JSON strings.
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+
+    # ------------------ LISTENER ------------------
+    listener:
+      ack-mode: manual
+
+  # =============================================
+  # MYSQL DATABASE
+  # =============================================
+  datasource:
+    url: jdbc:mysql://localhost:3306/sacco_account_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: user
+
+  # =============================================
+  # JPA / HIBERNATE
+  # =============================================
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        type:
+          preferred_uuid_jdbc_type: CHAR
