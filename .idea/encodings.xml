@@ -2,13 +2,13 @@
 <project version="4">
   <component name="Encoding">
     <file url="file://$PROJECT_DIR$/notification-service/src/main/java" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/sacco-account-service/sacco-notification-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/sacco-account-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/sacco-accounts-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/sacco-auth-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/sacco-events/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/sacco-events/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/sacco-member-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/sacco-notification-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/sacco-shared-module/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
   </component>

@@ -1,4 +1,4 @@
-package com.example.sacconotificationservice.dto;
+package com.example.notificationservice.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
