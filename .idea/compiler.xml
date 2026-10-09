@@ -24,7 +24,6 @@
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="accounts-service" target="17" />
-      <module name="sacco-parent" target="17" />
     </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">

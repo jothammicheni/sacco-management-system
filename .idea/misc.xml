@@ -14,6 +14,8 @@
         <option value="$PROJECT_DIR$/sacco-auth-service/pom.xml" />
         <option value="$PROJECT_DIR$/notification-service/pom.xml" />
         <option value="$PROJECT_DIR$/sacco-account-service/notification-service/pom.xml" />
+        <option value="$PROJECT_DIR$/sacco-notification-service/pom.xml" />
+        <option value="$PROJECT_DIR$/sacco-parent/pom.xml" />
       </list>
     </option>
     <option name="ignoredFiles">
