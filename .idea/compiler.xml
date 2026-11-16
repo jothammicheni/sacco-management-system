@@ -8,17 +8,10 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="sacco-events" />
+        <module name="api-gateway" />
         <module name="sacco-auth-service" />
         <module name="sacco-account-service" />
         <module name="sacco-member-service" />
-      </profile>
-      <profile name="Annotation profile for notification-service" enabled="true">
-        <sourceOutputDir name="target/generated-sources/annotations" />
-        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
-        <outputRelativeToContentRoot value="true" />
-        <processorPath useClasspath="false">
-          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.46/lombok-1.18.46.jar" />
-        </processorPath>
         <module name="sacco-notification-service" />
       </profile>
     </annotationProcessing>
@@ -29,6 +22,7 @@
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="accounts-service" options="-parameters" />
+      <module name="api-gateway" options="-parameters" />
       <module name="sacco-account-service" options="-parameters" />
       <module name="sacco-auth-service" options="-parameters" />
       <module name="sacco-events" options="-parameters" />

@@ -15,5 +15,6 @@ import java.util.UUID;
 public record UserActivatedEvent(
         UUID userId,
         String phoneNumber,
+        String email,
         Instant occurredAt
 ) {}

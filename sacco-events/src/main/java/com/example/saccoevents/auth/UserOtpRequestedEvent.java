@@ -15,6 +15,7 @@ import java.util.UUID;
 public record UserOtpRequestedEvent(
         UUID userId,
         String phoneNumber,
+        String email,
         String otpCode,
         OtpPurpose purpose,
         Instant expiresAt,

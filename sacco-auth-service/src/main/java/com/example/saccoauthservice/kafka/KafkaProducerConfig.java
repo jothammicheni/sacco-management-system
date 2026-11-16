@@ -12,16 +12,18 @@ public class KafkaProducerConfig {
     @Bean
     public NewTopic userOtpRequestedTopic() {
         return TopicBuilder.name(Topics.USER_OTP_REQUESTED)
-                .partitions(3)
-                .replicas(1)
-                .build();
+                .partitions(3).replicas(1).build();
+    }
+
+    @Bean
+    public NewTopic userActivationRequestedTopic() {
+        return TopicBuilder.name(Topics.USER_ACTIVATION_REQUESTED)
+                .partitions(3).replicas(1).build();
     }
 
     @Bean
     public NewTopic userActivatedTopic() {
         return TopicBuilder.name(Topics.USER_ACTIVATED)
-                .partitions(3)
-                .replicas(1)
-                .build();
+                .partitions(3).replicas(1).build();
     }
 }

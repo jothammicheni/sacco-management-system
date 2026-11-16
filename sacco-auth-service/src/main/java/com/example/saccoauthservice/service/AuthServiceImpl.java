@@ -1,10 +1,12 @@
 package com.example.saccoauthservice.service;
 
 import com.example.saccoauthservice.dto.*;
+import com.example.saccoauthservice.entity.ActivationToken;
 import com.example.saccoauthservice.entity.OtpCode;
 import com.example.saccoauthservice.entity.RefreshToken;
 import com.example.saccoauthservice.entity.User;
 import com.example.saccoauthservice.kafka.events.UserOutboxWriter;
+import com.example.saccoauthservice.repository.ActivationTokenRepository;
 import com.example.saccoauthservice.repository.OtpCodeRepository;
 import com.example.saccoauthservice.repository.RefreshTokenRepository;
 import com.example.saccoauthservice.repository.UserRepository;
@@ -12,31 +14,37 @@ import com.example.saccoauthservice.service.AuthService;
 import com.example.saccoauthservice.service.JwtService;
 import com.example.saccoauthservice.utils.OtpGenerator;
 import com.example.saccoevents.auth.UserOtpRequestedEvent;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 @Slf4j
 public class AuthServiceImpl implements AuthService {
 
-    private final UserRepository        userRepo;
-    private final OtpCodeRepository     otpRepo;
-    private final RefreshTokenRepository refreshTokenRepo;
+    private final UserRepository            userRepo;
+    private final OtpCodeRepository         otpRepo;
+    private final ActivationTokenRepository activationTokenRepo;
+    private final RefreshTokenRepository    refreshTokenRepo;
 
-    private final UserOutboxWriter      outboxWriter;
-    private final JwtService            jwtService;
-    private final PasswordEncoder       passwordEncoder;
+    private final UserOutboxWriter          outboxWriter;
+    private final JwtService                jwtService;
+    private final PasswordEncoder           passwordEncoder;
+
+    @Value("${app.activation.base-url:http://localhost:3000}")
+    private String activationBaseUrl;
 
     // ==========================================================
-    // 1. Called by MemberEventConsumer when member.created arrives.
+    // 1. Consumer-triggered — creates user shell + activation email
     // ==========================================================
     @Override
     @Transactional
@@ -56,84 +64,177 @@ public class AuthServiceImpl implements AuthService {
                 .role(User.Role.CUSTOMER)
                 .status(User.Status.PENDING)
                 .build();
-
         User saved = userRepo.save(user);
 
-        String rawCode = OtpGenerator.generateOtp();
+        String linkToken = UUID.randomUUID().toString().replace("-", "");
+        ActivationToken activationToken = ActivationToken.builder()
+                .token(linkToken)
+                .userId(saved.getId())
+                .expiresAt(LocalDateTime.now().plusMinutes(30))
+                .build();
+        activationTokenRepo.save(activationToken);
 
+        String code = OtpGenerator.generateOtp();
         OtpCode otp = OtpCode.builder()
                 .userId(saved.getId())
-                .codeHash(passwordEncoder.encode(rawCode))
+                .codeHash(passwordEncoder.encode(code))
                 .purpose(OtpCode.Purpose.ACTIVATION)
                 .expiresAt(LocalDateTime.now().plusMinutes(10))
                 .build();
         otpRepo.save(otp);
 
-        outboxWriter.writeOtpRequested(
-                saved,
-                rawCode,
-                UserOtpRequestedEvent.OtpPurpose.ACTIVATION,
-                OtpGenerator.validTill());
+        String activationLink = String.format("%s/verify?token=%s",
+                activationBaseUrl, linkToken);
 
-        log.info("Created user shell for memberId={} phone={}", memberId, phone);
+        outboxWriter.writeUserActivationRequested(
+                saved,
+                activationLink,
+                code,
+                Instant.now().plusSeconds(30 * 60),
+                Instant.now().plusSeconds(10 * 60));
+
+        log.info("Created user shell for memberId={} and queued activation email", memberId);
     }
 
     // ==========================================================
-    // 2. Request an OTP (activation, password reset, PIN reset).
+    // 2. Magic link validation
+    // ==========================================================
+    @Override
+    @Transactional
+    public ActivationContextDto verifyActivationLink(String token) {
+
+        ActivationToken activationToken = activationTokenRepo.findByToken(token)
+                .orElse(null);
+
+        if (activationToken == null) {
+            return ActivationContextDto.invalid("LINK_NOT_FOUND");
+        }
+
+        if (!activationToken.isUsable()) {
+            return ActivationContextDto.invalid("LINK_EXPIRED");
+        }
+
+        User user = userRepo.findById(activationToken.getUserId()).orElse(null);
+
+        if (user == null) {
+            return ActivationContextDto.invalid("USER_NOT_FOUND");
+        }
+
+        if (user.getStatus() != User.Status.PENDING) {
+            return ActivationContextDto.invalid("ALREADY_ACTIVATED");
+        }
+
+        return ActivationContextDto.builder()
+                .valid(true)
+                .userId(user.getId())
+                .maskedEmail(maskEmail(user.getEmail()))
+                .expiresAt(activationToken.getExpiresAt())
+                .build();
+    }
+
+    // ==========================================================
+    // 3. Complete activation (link + code + password + PIN)
+    // ==========================================================
+    @Override
+    @Transactional
+    public AuthTokenResponseDto activateUser(ActivateUserDto request) {
+
+        // Verify link token
+        ActivationToken activationToken = activationTokenRepo.findByToken(request.getToken())
+                .orElseThrow(() -> new NoSuchElementException("Invalid or expired link"));
+
+        if (!activationToken.isUsable()) {
+            throw new IllegalStateException("Link has expired");
+        }
+
+        User user = userRepo.findById(activationToken.getUserId())
+                .orElseThrow(() -> new NoSuchElementException("User not found"));
+
+        if (user.getStatus() != User.Status.PENDING) {
+            throw new IllegalStateException("Account is already activated");
+        }
+
+        // Verify code
+        OtpCode otp = otpRepo
+                .findFirstByUserIdAndPurposeAndUsedAtIsNullOrderByCreatedAtDesc(
+                        user.getId(), OtpCode.Purpose.ACTIVATION)
+                .orElseThrow(() -> new NoSuchElementException("No active code"));
+
+        if (!otp.isUsable()) {
+            throw new IllegalStateException("Code has expired");
+        }
+
+        if (!passwordEncoder.matches(request.getCode(), otp.getCodeHash())) {
+            otp.incrementAttempts();
+            otpRepo.save(otp);
+            throw new IllegalStateException("Invalid verification code");
+        }
+
+        // Set credentials and activate
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setPinHash(passwordEncoder.encode(request.getPin()));
+        user.setStatus(User.Status.ACTIVE);
+        userRepo.save(user);
+
+        // Invalidate link + code
+        activationToken.setUsedAt(LocalDateTime.now());
+        activationTokenRepo.save(activationToken);
+        otp.markUsed();
+        otpRepo.save(otp);
+
+        // Publish activation event (for welcome email)
+        outboxWriter.writeUserActivated(user);
+
+        // Issue tokens
+        String accessToken  = jwtService.issueAccessToken(user);
+        String refreshToken = issueRefreshToken(user);
+
+        log.info("User {} fully activated via magic link", user.getId());
+
+        return AuthTokenResponseDto.fullAccess(accessToken, refreshToken,
+                jwtService.getAccessTokenTtlSeconds());
+    }
+
+    // ==========================================================
+    // 4. OTP request (used for password/PIN reset later)
     // ==========================================================
     @Override
     @Transactional
     public void requestOtp(OtpRequestDto request) {
 
-        User user = userRepo.findByPhoneNumber(request.getPhoneNumber())
-                .orElse(null);
-
-        if (user == null) {
-            // Never reveal whether the phone is registered
-            log.info("OTP requested for unknown phone {}", request.getPhoneNumber());
-            return;
-        }
-
-        if (user.getStatus() == User.Status.DISABLED) {
-            log.info("OTP request for disabled user {}", user.getId());
+        User user = userRepo.findByPhoneNumber(request.getPhoneNumber()).orElse(null);
+        if (user == null || user.getStatus() == User.Status.DISABLED) {
+            log.info("OTP requested for unknown/disabled phone {}", request.getPhoneNumber());
             return;
         }
 
         OtpCode.Purpose purpose = OtpCode.Purpose.valueOf(request.getPurpose().name());
 
-        // Rate limit: max 3 in the last 5 minutes
-        long recentCount = otpRepo.countRecentForUser(
+        long recent = otpRepo.countRecentForUser(
                 user.getId(), purpose, LocalDateTime.now().minusMinutes(5));
-        if (recentCount >= 3) {
-            log.warn("OTP rate limit hit for user {} purpose {}", user.getId(), purpose);
-            return;   // still 202 to the client
+        if (recent >= 3) {
+            log.warn("OTP rate limit hit for user {}", user.getId());
+            return;
         }
 
-        // Invalidate previous OTPs of the same purpose
         otpRepo.invalidateAllForUserAndPurpose(user.getId(), purpose, LocalDateTime.now());
 
-        // Generate and store the new OTP
         String rawCode = OtpGenerator.generateOtp();
         OtpCode otp = OtpCode.builder()
                 .userId(user.getId())
-                .codeHash(passwordEncoder.encode(rawCode))   // store HASH
+                .codeHash(passwordEncoder.encode(rawCode))
                 .purpose(purpose)
-                .expiresAt(LocalDateTime.from(OtpGenerator.validTill()))
+                .expiresAt(LocalDateTime.now().plusMinutes(10))
                 .build();
         otpRepo.save(otp);
 
-        // Publish the RAW code for the SMS
-        outboxWriter.writeOtpRequested(
-                user,
-                rawCode,
+        outboxWriter.writeOtpRequested(user, rawCode,
                 UserOtpRequestedEvent.OtpPurpose.valueOf(purpose.name()),
                 OtpGenerator.validTill());
-
-        log.info("OTP issued for user {} purpose {}", user.getId(), purpose);
     }
 
     // ==========================================================
-    // 3. Verify OTP → return a setup token (SET_PASSWORD or SET_PIN).
+    // 5. OTP verify (used for reset flows)
     // ==========================================================
     @Override
     @Transactional
@@ -162,7 +263,6 @@ public class AuthServiceImpl implements AuthService {
         otp.markUsed();
         otpRepo.save(otp);
 
-        // Return a short-lived setup token based on purpose
         String setupToken = jwtService.issueSetupToken(user.getId(), purpose);
 
         return switch (purpose) {
@@ -174,66 +274,55 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // ==========================================================
-    // 4. Set password using a setup token.
+    // 6. Credential setters (used by reset flows)
     // ==========================================================
     @Override
     @Transactional
     public AuthTokenResponseDto setPassword(PasswordSetDto request) {
 
         UUID userId = jwtService.parseSetupToken(request.getSetupToken());
-
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
 
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
 
-        // If the user has no PIN yet, next step is PIN setup
         if (!user.hasPin()) {
             userRepo.save(user);
-            String pinSetupToken = jwtService.issuePinSetupToken(user.getId());
-            return AuthTokenResponseDto.requirePinSetup(pinSetupToken);
+            return AuthTokenResponseDto.requirePinSetup(
+                    jwtService.issuePinSetupToken(user.getId()));
         }
 
-        // Otherwise the user is fully activated
         user.setStatus(User.Status.ACTIVE);
         userRepo.save(user);
-
         outboxWriter.writeUserActivated(user);
 
-        String accessToken  = jwtService.issueAccessToken(user);
-        String refreshToken = issueRefreshToken(user);
-
-        return AuthTokenResponseDto.fullAccess(accessToken, refreshToken, jwtService.getAccessTokenTtlSeconds());
+        return AuthTokenResponseDto.fullAccess(
+                jwtService.issueAccessToken(user),
+                issueRefreshToken(user),
+                jwtService.getAccessTokenTtlSeconds());
     }
 
-    // ==========================================================
-    // 5. Set PIN using a setup token. Completes activation.
-    // ==========================================================
     @Override
     @Transactional
     public AuthTokenResponseDto setPin(PinSetDto request) {
 
         UUID userId = jwtService.parseSetupToken(request.getSetupToken());
-
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
 
         user.setPinHash(passwordEncoder.encode(request.getPin()));
         user.setStatus(User.Status.ACTIVE);
         userRepo.save(user);
-
         outboxWriter.writeUserActivated(user);
 
-        String accessToken  = jwtService.issueAccessToken(user);
-        String refreshToken = issueRefreshToken(user);
-
-        log.info("User {} fully activated", userId);
-
-        return AuthTokenResponseDto.fullAccess(accessToken, refreshToken, jwtService.getAccessTokenTtlSeconds());
+        return AuthTokenResponseDto.fullAccess(
+                jwtService.issueAccessToken(user),
+                issueRefreshToken(user),
+                jwtService.getAccessTokenTtlSeconds());
     }
 
     // ==========================================================
-    // 6. Login: phone + password.
+    // 7. Login / refresh / logout
     // ==========================================================
     @Override
     @Transactional
@@ -259,30 +348,23 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalStateException("Invalid credentials");
         }
 
-        // Reset counters on successful password check
         user.setLoginAttempts(0);
         user.setLoginLockedUntil(null);
 
-        // If no PIN yet, route the user to PIN setup
         if (!user.hasPin()) {
             userRepo.save(user);
-            String pinSetupToken = jwtService.issuePinSetupToken(user.getId());
-            return AuthTokenResponseDto.requirePinSetup(pinSetupToken);
+            return AuthTokenResponseDto.requirePinSetup(
+                    jwtService.issuePinSetupToken(user.getId()));
         }
 
         userRepo.save(user);
 
-        String accessToken  = jwtService.issueAccessToken(user);
-        String refreshToken = issueRefreshToken(user);
-
-        log.info("User {} logged in", user.getId());
-
-        return AuthTokenResponseDto.fullAccess(accessToken, refreshToken, jwtService.getAccessTokenTtlSeconds());
+        return AuthTokenResponseDto.fullAccess(
+                jwtService.issueAccessToken(user),
+                issueRefreshToken(user),
+                jwtService.getAccessTokenTtlSeconds());
     }
 
-    // ==========================================================
-    // 7. Refresh access token using a refresh token.
-    // ==========================================================
     @Override
     @Transactional
     public AuthTokenResponseDto refresh(String refreshToken) {
@@ -297,55 +379,52 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepo.findById(token.getUserId())
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
 
-        // Rotate: revoke the old token, issue a new one
         token.revoke();
         refreshTokenRepo.save(token);
 
-        String newAccess  = jwtService.issueAccessToken(user);
-        String newRefresh = issueRefreshToken(user);
-
-        return AuthTokenResponseDto.fullAccess(newAccess, newRefresh, jwtService.getAccessTokenTtlSeconds());
+        return AuthTokenResponseDto.fullAccess(
+                jwtService.issueAccessToken(user),
+                issueRefreshToken(user),
+                jwtService.getAccessTokenTtlSeconds());
     }
 
-    // ==========================================================
-    // 8. Logout: revoke a refresh token.
-    // ==========================================================
     @Override
     @Transactional
     public void logout(String refreshToken) {
-
         refreshTokenRepo.findByToken(refreshToken).ifPresent(t -> {
             t.revoke();
             refreshTokenRepo.save(t);
         });
     }
 
-    // ==========================================================
-    // 9. Get current user.
-    // ==========================================================
     @Override
     @Transactional(readOnly = true)
     public UserResponseDto getCurrentUser(UUID userId) {
-
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
-
         return UserResponseDto.fromEntity(user);
     }
 
     // ==========================================================
-    // Internal helper — create and persist a refresh token.
+    // Helpers
     // ==========================================================
     private String issueRefreshToken(User user) {
-
         RefreshToken token = RefreshToken.builder()
                 .token(UUID.randomUUID().toString())
                 .userId(user.getId())
                 .expiresAt(LocalDateTime.now().plusDays(30))
                 .build();
-
         refreshTokenRepo.save(token);
-
         return token.getToken();
+    }
+
+    private String maskEmail(String email) {
+        if (email == null || !email.contains("@")) return "***";
+        String[] parts = email.split("@");
+        String local = parts[0];
+        String masked = local.length() <= 2
+                ? "*".repeat(local.length())
+                : local.charAt(0) + "*".repeat(local.length() - 2) + local.charAt(local.length() - 1);
+        return masked + "@" + parts[1];
     }
 }

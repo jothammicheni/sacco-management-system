@@ -5,6 +5,7 @@ import com.example.saccoauthservice.entity.User;
 import com.example.saccoauthservice.repository.OutboxEventRepository;
 import com.example.saccoevents.Topics;
 import com.example.saccoevents.auth.UserActivatedEvent;
+import com.example.saccoevents.auth.UserActivationRequestedEvent;
 import com.example.saccoevents.auth.UserOtpRequestedEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,9 +24,29 @@ public class UserOutboxWriter {
     private final OutboxEventRepository outboxRepo;
     private final ObjectMapper objectMapper;
 
-    // ----------------------------------------------------------
-    // 1. OTP requested — the Notification Service sends the SMS.
-    // ----------------------------------------------------------
+    public void writeUserActivationRequested(User user,
+                                             String activationLink,
+                                             String verificationCode,
+                                             Instant linkExpiresAt,
+                                             Instant codeExpiresAt) {
+
+        UserActivationRequestedEvent event = new UserActivationRequestedEvent(
+                user.getId(),
+                user.getEmail(),
+                "Member",
+                activationLink,
+                verificationCode,
+                linkExpiresAt,
+                codeExpiresAt,
+                Instant.now()
+        );
+
+        persist(user.getId().toString(),
+                Topics.USER_ACTIVATION_REQUESTED,
+                "UserActivationRequestedEvent",
+                event);
+    }
+
     public void writeOtpRequested(User user,
                                   String otpCode,
                                   UserOtpRequestedEvent.OtpPurpose purpose,
@@ -34,6 +55,7 @@ public class UserOutboxWriter {
         UserOtpRequestedEvent event = new UserOtpRequestedEvent(
                 user.getId(),
                 user.getPhoneNumber(),
+                user.getEmail(),
                 otpCode,
                 purpose,
                 expiresAt,
@@ -46,14 +68,12 @@ public class UserOutboxWriter {
                 event);
     }
 
-    // ----------------------------------------------------------
-    // 2. User activated — the user completed OTP + password + PIN.
-    // ----------------------------------------------------------
     public void writeUserActivated(User user) {
 
         UserActivatedEvent event = new UserActivatedEvent(
                 user.getId(),
                 user.getPhoneNumber(),
+                user.getEmail(),
                 Instant.now()
         );
 
@@ -63,13 +83,7 @@ public class UserOutboxWriter {
                 event);
     }
 
-    // ----------------------------------------------------------
-    // Internal helper — build and save one OutboxEvent row.
-    // ----------------------------------------------------------
-    private void persist(String aggregateId,
-                         String topic,
-                         String eventType,
-                         Object event) {
+    private void persist(String aggregateId, String topic, String eventType, Object event) {
 
         String payload;
         try {

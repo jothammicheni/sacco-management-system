@@ -1,13 +1,6 @@
 package com.example.saccoauthservice.controller;
 
-import com.example.saccoauthservice.dto.AuthTokenResponseDto;
-import com.example.saccoauthservice.dto.LoginDto;
-import com.example.saccoauthservice.dto.OtpRequestDto;
-import com.example.saccoauthservice.dto.OtpRequestResponseDto;
-import com.example.saccoauthservice.dto.OtpVerifyDto;
-import com.example.saccoauthservice.dto.PasswordSetDto;
-import com.example.saccoauthservice.dto.PinSetDto;
-import com.example.saccoauthservice.dto.UserResponseDto;
+import com.example.saccoauthservice.dto.*;
 import com.example.saccoauthservice.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,21 +11,34 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
 
     // ==========================================================
-    // OTP FLOW
+    // Magic link activation
+    // ==========================================================
+
+    @GetMapping("/verify")
+    public ActivationContextDto verifyLink(@RequestParam String token) {
+        return authService.verifyActivationLink(token);
+    }
+
+    @PostMapping("/activate")
+    public AuthTokenResponseDto activate(@Valid @RequestBody ActivateUserDto request) {
+        return authService.activateUser(request);
+    }
+
+    // ==========================================================
+    // OTP flow (reset flows)
     // ==========================================================
 
     @PostMapping("/otp/request")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public OtpRequestResponseDto requestOtp(@Valid @RequestBody OtpRequestDto request) {
         authService.requestOtp(request);
-        // Always the same response — never reveal whether the phone is registered
         return OtpRequestResponseDto.accepted(null);
     }
 
@@ -42,7 +48,7 @@ public class AuthController {
     }
 
     // ==========================================================
-    // CREDENTIAL SETUP
+    // Credential setup (reset flows)
     // ==========================================================
 
     @PostMapping("/password/set")
@@ -56,7 +62,7 @@ public class AuthController {
     }
 
     // ==========================================================
-    // LOGIN / SESSION
+    // Session
     // ==========================================================
 
     @PostMapping("/login")
@@ -74,10 +80,6 @@ public class AuthController {
     public void logout(@RequestParam("token") String refreshToken) {
         authService.logout(refreshToken);
     }
-
-    // ==========================================================
-    // CURRENT USER (requires access token)
-    // ==========================================================
 
     @GetMapping("/me")
     public UserResponseDto me(@AuthenticationPrincipal UUID userId) {

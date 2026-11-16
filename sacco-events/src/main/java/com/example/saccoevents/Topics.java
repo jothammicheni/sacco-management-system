@@ -22,9 +22,11 @@ public final class Topics {
     public static final String LOAN_APPLICATION_REJECTED  = "loan.application.rejected";
     public static final String LOAN_DISBURSED             = "loan.disbursed";
     public static final String LOAN_REPAID                = "loan.repaid";
-    // ---------- Auth domain ----------// ---------- Auth domain ----------
-    public static final String USER_OTP_REQUESTED = "user.otp.requested";
-    public static final String USER_ACTIVATED     = "user.activated";
+
+    // ---------- Auth domain ----------
+    public static final String USER_OTP_REQUESTED          = "user.otp.requested";
+    public static final String USER_ACTIVATION_REQUESTED  = "user.activation.requested";
+    public static final String USER_ACTIVATED              = "user.activated";
     // ---------- Notification domain ----------
     public static final String NOTIFICATION_REQUESTED = "notification.requested";
 }

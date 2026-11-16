@@ -1,0 +1,71 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      # Global CORS configuration (allows frontend apps to call the gateway)
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+
+      # Global timeouts to prevent slow microservices from hanging the gateway
+      httpclient:
+        connect-timeout: 3000
+        response-timeout: 10s
+
+      # Route definitions for your 5 microservices
+      routes:
+        # 1. User Service
+        - id: auth-service
+          uri: http://auth-service:8088
+          predicates:
+            - Path=/api/v1/auth/**
+          filters:
+            - StripPrefix=2  # Turns /api/v1/users/123 into /users/123
+
+        # 2. Order Service
+        - id: account-service
+          uri: http://account-service:8087
+          predicates:
+            - Path=/api/v1/account/**
+          filters:
+            - StripPrefix=2
+
+        # 3. Payment Service
+        - id: member-service
+          uri: http://member-service:8086
+          predicates:
+            - Path=/api/v1/members/**
+          filters:
+            - StripPrefix=2
+
+        # 4. Inventory Service
+        - id: notification-service
+          uri: http://notification-service:8089
+          predicates:
+            - Path=/api/v1/notification/**
+          filters:
+            - StripPrefix=2
+
+
+# Expose gateway health and route inspection endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    gateway:
+      enabled: true
