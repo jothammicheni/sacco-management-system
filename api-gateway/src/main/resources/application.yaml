@@ -7,60 +7,72 @@ spring:
 
   cloud:
     gateway:
-      # Global CORS configuration (allows frontend apps to call the gateway)
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins: "*"
+            allowedOriginPatterns: "*"
             allowedMethods:
               - GET
               - POST
               - PUT
+              - PATCH
               - DELETE
               - OPTIONS
             allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
 
-      # Global timeouts to prevent slow microservices from hanging the gateway
       httpclient:
         connect-timeout: 3000
         response-timeout: 10s
 
-      # Route definitions for your 5 microservices
+      default-filters:
+        - AddResponseHeader=X-Gateway, api-gateway
+
       routes:
-        # 1. User Service
         - id: auth-service
-          uri: http://auth-service:8088
+          uri: http://localhost:8088            # ← changed
           predicates:
             - Path=/api/v1/auth/**
           filters:
-            - StripPrefix=2  # Turns /api/v1/users/123 into /users/123
+            - name: CircuitBreaker
+              args:
+                name: authServiceCB
+                fallbackUri: forward:/fallback/auth
 
-        # 2. Order Service
         - id: account-service
-          uri: http://account-service:8087
+          uri: http://localhost:8087            # ← changed
           predicates:
             - Path=/api/v1/account/**
           filters:
-            - StripPrefix=2
+            - name: CircuitBreaker
+              args:
+                name: accountServiceCB
+                fallbackUri: forward:/fallback/account
 
-        # 3. Payment Service
         - id: member-service
-          uri: http://member-service:8086
+          uri: http://localhost:8086            # ← changed
           predicates:
             - Path=/api/v1/members/**
           filters:
-            - StripPrefix=2
+            - name: CircuitBreaker
+              args:
+                name: memberServiceCB
+                fallbackUri: forward:/fallback/member
 
-        # 4. Inventory Service
         - id: notification-service
-          uri: http://notification-service:8089
+          uri: http://localhost:8089            # ← changed
           predicates:
             - Path=/api/v1/notification/**
           filters:
-            - StripPrefix=2
+            - name: CircuitBreaker
+              args:
+                name: notificationServiceCB
+                fallbackUri: forward:/fallback/notification
 
+jwt:
+  secret: dev-only-jwt-secret-do-not-use-in-production-1234567890
 
-# Expose gateway health and route inspection endpoints
 management:
   endpoints:
     web:
@@ -69,3 +81,5 @@ management:
   endpoint:
     gateway:
       enabled: true
+    health:
+      show-details: when_authorized

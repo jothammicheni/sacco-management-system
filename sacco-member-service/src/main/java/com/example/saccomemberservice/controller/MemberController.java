@@ -5,87 +5,116 @@ import com.example.saccomemberservice.dto.MemberResponseDto;
 import com.example.saccomemberservice.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
+
+
 
 @RestController
 @RequestMapping("/api/v1/members")
 @RequiredArgsConstructor
+@Slf4j
 public class MemberController {
 
     private final MemberService memberService;
 
-    // ----------------------------------------------------------
-    // CREATE
-    // POST /api/v1/members
-    // ----------------------------------------------------------
+    // ==========================================================
+    // SELF-SERVICE (any authenticated user)
+    // ==========================================================
+    @GetMapping("/me")
+    public MemberResponseDto myProfile(@RequestHeader("X-User-Id") UUID userId) {
+        return memberService.getById(userId);
+    }
+
+    @PutMapping("/me")
+    public MemberResponseDto updateSelf(
+            @RequestHeader("X-User-Id") UUID userId,
+            @Valid @RequestBody MemberRequestDto request) {
+        return memberService.update(userId, request);
+    }
+
+    // ==========================================================
+    // ADMIN MANAGEMENT
+    // ==========================================================
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public MemberResponseDto create(@Valid @RequestBody MemberRequestDto request) {
+    public MemberResponseDto create(
+            @RequestHeader("X-User-Role") String role,
+            @Valid @RequestBody MemberRequestDto request) {
+        requireAdmin(role);
         return memberService.create(request);
     }
 
-    // ----------------------------------------------------------
-    // READ (by id)
-    // GET /api/v1/members/{id}
-    // ----------------------------------------------------------
-    @GetMapping("/{id}")
-    public MemberResponseDto getById(@PathVariable UUID id) {
-        return memberService.getById(id);
-    }
-
-    // ----------------------------------------------------------
-    // READ (by member number)
-    // GET /api/v1/members/number/{memberNumber}
-    // ----------------------------------------------------------
-    @GetMapping("/number/{memberNumber}")
-    public MemberResponseDto getByMemberNumber(@PathVariable String memberNumber) {
-        return memberService.getByMemberNumber(memberNumber);
-    }
-
-    // ----------------------------------------------------------
-    // READ (paginated list)
-    // GET /api/v1/members?page=0&size=20&sort=createdAt,desc
-    // ----------------------------------------------------------
     @GetMapping
     public Page<MemberResponseDto> getAll(
+            @RequestHeader("X-User-Role") String role,
             @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
+        requireAdmin(role);
         return memberService.getAll(pageable);
     }
 
-    // ----------------------------------------------------------
-    // UPDATE
-    // PUT /api/v1/members/{id}
-    // ----------------------------------------------------------
-    @PutMapping("/{id}")
-    public MemberResponseDto update(@PathVariable UUID id,
-                                    @Valid @RequestBody MemberRequestDto request) {
+    @GetMapping("/{id:[0-9a-fA-F-]{36}}")
+    public MemberResponseDto getById(
+            @RequestHeader("X-User-Id") UUID callerId,
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable UUID id) {
+        MemberResponseDto member = memberService.getById(id);
+        if (!"ADMIN".equals(role) && !member.getId().equals(callerId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "You can only view your own profile");
+        }
+        return member;
+    }
+
+    @GetMapping("/number/{memberNumber}")
+    public MemberResponseDto getByMemberNumber(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable String memberNumber) {
+        requireAdmin(role);
+        return memberService.getByMemberNumber(memberNumber);
+    }
+
+    @PutMapping("/{id:[0-9a-fA-F-]{36}}")
+    public MemberResponseDto update(
+            @RequestHeader("X-User-Id") UUID callerId,
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable UUID id,
+            @Valid @RequestBody MemberRequestDto request) {
+        if (!"ADMIN".equals(role) && !id.equals(callerId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "You can only update your own profile");
+        }
         return memberService.update(id, request);
     }
 
-    // ----------------------------------------------------------
-    // DELETE (soft)
-    // DELETE /api/v1/members/{id}
-    // ----------------------------------------------------------
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:[0-9a-fA-F-]{36}}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void softDelete(@PathVariable UUID id) {
+    public void softDelete(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable UUID id) {
+        requireAdmin(role);
         memberService.softDelete(id);
     }
 
-    // ----------------------------------------------------------
-    // RESTORE
-    // POST /api/v1/members/{id}/restore
-    // ----------------------------------------------------------
-    @PostMapping("/{id}/restore")
+    @PostMapping("/{id:[0-9a-fA-F-]{36}}/restore")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void restore(@PathVariable UUID id) {
+    public void restore(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable UUID id) {
+        requireAdmin(role);
         memberService.restore(id);
+    }
+
+    private void requireAdmin(String role) {
+        if (!"ADMIN".equals(role)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin only");
+        }
     }
 }

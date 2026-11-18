@@ -82,7 +82,7 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public UserResponseDto me(@AuthenticationPrincipal UUID userId) {
+    public UserResponseDto me(@RequestHeader("X-User-Id") UUID userId) {
         return authService.getCurrentUser(userId);
     }
 }

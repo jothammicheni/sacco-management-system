@@ -17,25 +17,4 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder(12);
     }
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/auth/otp/**",
-                                "/auth/password/set",
-                                "/auth/pin/set",
-                                "/auth/login",
-                                "/auth/refresh",
-                                "/auth/logout",
-                                "/actuator/health",
-                                "/actuator/info"
-                        ).permitAll()
-                        .anyRequest().authenticated()
-                );
-
-        return http.build();
-    }
 }
