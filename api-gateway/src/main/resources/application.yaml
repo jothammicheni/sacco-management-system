@@ -74,6 +74,8 @@ jwt:
   secret: dev-only-jwt-secret-do-not-use-in-production-1234567890
 
 management:
+#  server:
+#    port: 9001
   endpoints:
     web:
       exposure:
@@ -81,5 +83,6 @@ management:
   endpoint:
     gateway:
       enabled: true
+      access: read-only
     health:
       show-details: when_authorized

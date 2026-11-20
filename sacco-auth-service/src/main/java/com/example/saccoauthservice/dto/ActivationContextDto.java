@@ -19,6 +19,7 @@ public class ActivationContextDto {
     private boolean valid;
     private UUID userId;
     private String maskedEmail;
+    private String phoneNumber;     // normalized, e.g. 254712345678
     private LocalDateTime expiresAt;
     private String reason;          // populated only when valid = false
 

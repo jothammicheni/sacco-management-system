@@ -1,0 +1,247 @@
+
+<main class="min-h-screen flex flex-col md:flex-row bg-slate-100">
+
+  <!-- LEFT: SACCO BRANDING -->
+  <section
+    class="md:w-1/2 bg-blue-900 text-white flex flex-col
+           justify-center items-center p-10 text-center relative overflow-hidden"
+  >
+
+    <div class="absolute w-96 h-96 bg-blue-800 rounded-full
+                opacity-40 -top-40 -left-40"></div>
+
+    <div class="absolute w-96 h-96 bg-blue-800 rounded-full
+                opacity-30 -bottom-40 -right-40"></div>
+
+    <div class="max-w-md relative z-10">
+
+      <div class="w-20 h-20 bg-white/10 rounded-2xl
+                  flex items-center justify-center mx-auto mb-7 text-5xl">
+        🏦
+      </div>
+
+      <h1 class="text-4xl font-bold mb-5">
+        Welcome to GenZ-SACCO Ltd
+      </h1>
+
+      <p class="text-blue-200 text-lg leading-relaxed">
+        Empowering members through savings, affordable loans
+        and financial growth. Your financial future starts here.
+      </p>
+
+      <div class="mt-9 flex justify-center flex-wrap gap-4
+                  text-sm text-blue-200">
+
+        <span>Secure Savings</span>
+        <span>•</span>
+        <span>Easy Loans</span>
+        <span>•</span>
+        <span>Member First</span>
+
+      </div>
+
+      <div class="mt-16 border-t border-blue-700 pt-6">
+        <p class="text-xs text-blue-300">
+          Together we save. Together we grow.
+        </p>
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- RIGHT: LOGIN -->
+  <section class="md:w-1/2 flex items-center justify-center p-6 sm:p-10">
+
+    <div class="bg-white w-full max-w-md rounded-2xl
+                shadow-xl border border-slate-100 p-8">
+
+      <!-- HEADER -->
+      <div class="text-center mb-9">
+
+        <div class="w-14 h-14 bg-blue-50 rounded-xl
+                    flex items-center justify-center mx-auto mb-4">
+
+          <span class="text-3xl">👋</span>
+
+        </div>
+
+        <h2 class="text-3xl font-bold text-slate-800">
+          Member Login
+        </h2>
+
+        <p class="text-gray-500 mt-2 text-sm">
+          Welcome back! Login to access your SACCO account.
+        </p>
+
+      </div>
+
+
+      <!-- LOGIN FORM -->
+      <form
+        [formGroup]="form"
+        (ngSubmit)="submit()"
+        novalidate
+        class="space-y-5"
+      >
+
+        <!-- PHONE NUMBER -->
+        <div>
+
+          <label
+            for="phoneNumber"
+            class="block text-sm font-semibold text-gray-700 mb-2"
+          >
+            Phone Number
+          </label>
+
+          <input
+            id="phoneNumber"
+            type="tel"
+            formControlName="phoneNumber"
+            placeholder="254712345678"
+            inputmode="numeric"
+            autocomplete="tel"
+            class="w-full px-4 py-3 border border-gray-300
+                   rounded-lg outline-none bg-slate-50
+                   focus:bg-white focus:ring-2 focus:ring-blue-600
+                   focus:border-blue-600 transition text-sm"
+          >
+
+          @if (form.controls.phoneNumber.touched &&
+               form.controls.phoneNumber.invalid) {
+
+            <p class="text-red-600 text-xs mt-2">
+              Enter a valid Kenyan number (2547XXXXXXXX or 2541XXXXXXXX).
+            </p>
+
+          }
+
+        </div>
+
+
+        <!-- PASSWORD -->
+        <div>
+
+          <label
+            for="password"
+            class="block text-sm font-semibold text-gray-700 mb-2"
+          >
+            Password
+          </label>
+
+          <input
+            id="password"
+            type="password"
+            formControlName="password"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+            class="w-full px-4 py-3 border border-gray-300
+                   rounded-lg outline-none bg-slate-50
+                   focus:bg-white focus:ring-2 focus:ring-blue-600
+                   focus:border-blue-600 transition text-sm"
+          >
+
+          @if (form.controls.password.touched &&
+               form.controls.password.invalid) {
+
+            <p class="text-red-600 text-xs mt-2">
+              Password is required.
+            </p>
+
+          }
+
+        </div>
+
+
+        <!-- ERROR MESSAGE -->
+        @if (login.errorMessage()) {
+
+          <div class="bg-red-50 border border-red-200
+                      rounded-lg p-4 text-red-700 text-sm">
+
+            <div class="flex items-start gap-2">
+              <span>⚠️</span>
+
+              <p>
+                {{ login.errorMessage() }}
+              </p>
+            </div>
+
+          </div>
+
+        }
+
+
+        <!-- FORGOT PASSWORD -->
+        <div class="text-right">
+
+          <a
+            routerLink="/forgot-password"
+            class="text-sm text-blue-700 hover:underline"
+          >
+            Forgot password?
+          </a>
+
+        </div>
+
+
+        <!-- LOGIN BUTTON -->
+        <button
+          type="submit"
+          [disabled]="form.invalid || submitting() || login.submitting()"
+          class="w-full bg-blue-800 hover:bg-blue-900
+                 text-white font-semibold py-3.5 rounded-lg
+                 transition duration-300 shadow-md
+                 disabled:bg-slate-300 disabled:cursor-not-allowed
+                 flex justify-center items-center gap-2"
+        >
+
+          @if (submitting() || login.submitting()) {
+
+            <span
+              class="w-5 h-5 border-2 border-white/40
+                     border-t-white rounded-full animate-spin"
+            ></span>
+
+            Signing in...
+
+          } @else {
+
+            Login to Account
+            <span>→</span>
+
+          }
+
+        </button>
+
+      </form>
+
+
+      <!-- FOOTER -->
+      <div class="mt-8 text-center border-t border-slate-100 pt-6">
+
+        <p class="text-sm text-gray-500">
+          Don't have an account?
+
+          <a
+            href="mailto:support@genzsacco.com"
+            class="text-blue-700 font-semibold hover:underline"
+          >
+            Contact SACCO
+          </a>
+
+        </p>
+
+      </div>
+
+      <p class="text-xs text-gray-400 text-center mt-6">
+        &copy; 2026 GenZ-SACCO Ltd. All rights reserved.
+      </p>
+
+    </div>
+
+  </section>
+
+</main>

@@ -79,7 +79,7 @@ public class AuthServiceImpl implements AuthService {
                 .userId(saved.getId())
                 .codeHash(passwordEncoder.encode(code))
                 .purpose(OtpCode.Purpose.ACTIVATION)
-                .expiresAt(LocalDateTime.now().plusMinutes(10))
+                .expiresAt(LocalDateTime.now().plusMinutes(30))
                 .build();
         otpRepo.save(otp);
 
@@ -128,6 +128,7 @@ public class AuthServiceImpl implements AuthService {
                 .valid(true)
                 .userId(user.getId())
                 .maskedEmail(maskEmail(user.getEmail()))
+                .phoneNumber(user.getPhoneNumber())
                 .expiresAt(activationToken.getExpiresAt())
                 .build();
     }

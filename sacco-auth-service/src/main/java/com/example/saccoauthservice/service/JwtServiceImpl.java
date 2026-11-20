@@ -25,8 +25,8 @@ public class JwtServiceImpl implements JwtService {
 
     public JwtServiceImpl(
             @Value("${jwt.secret}") String secret,
-            @Value("${jwt.access-token-ttl-seconds:900}") long accessTokenTtlSeconds,
-            @Value("${jwt.setup-token-ttl-seconds:600}") long setupTokenTtlSeconds) {
+            @Value("${jwt.access-token-ttl-seconds:86400}") long accessTokenTtlSeconds,
+            @Value("${jwt.setup-token-ttl-seconds:6000}") long setupTokenTtlSeconds) {
 
         this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessTokenTtlSeconds = accessTokenTtlSeconds;

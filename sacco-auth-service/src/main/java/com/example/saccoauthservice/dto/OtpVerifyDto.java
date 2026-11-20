@@ -27,7 +27,7 @@ public class OtpVerifyDto {
     @Pattern(regexp = "^[0-9]{6}$", message = "Code must be exactly 6 digits")
     private String code;
 
-    @NotNull(message = "Purpose is required")
+//    @NotNull(message = "Purpose is required")
     private Purpose purpose;
 
     public enum Purpose {

@@ -5,7 +5,6 @@ import com.example.saccoauthservice.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -32,32 +31,74 @@ public class AuthController {
     }
 
     // ==========================================================
-    // OTP flow (reset flows)
+    // OTP request — one endpoint per purpose
     // ==========================================================
 
-    @PostMapping("/otp/request")
+    @PostMapping("/otp/request/activation")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public OtpRequestResponseDto requestOtp(@Valid @RequestBody OtpRequestDto request) {
+    public OtpRequestResponseDto requestActivationOtp(
+            @Valid @RequestBody OtpRequestDto request) {
+        request.setPurpose(OtpRequestDto.Purpose.ACTIVATION);
         authService.requestOtp(request);
         return OtpRequestResponseDto.accepted(null);
     }
 
-    @PostMapping("/otp/verify")
-    public AuthTokenResponseDto verifyOtp(@Valid @RequestBody OtpVerifyDto request) {
+    @PostMapping("/otp/request/password-reset")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public OtpRequestResponseDto requestPasswordResetOtp(
+            @Valid @RequestBody OtpRequestDto request) {
+        request.setPurpose(OtpRequestDto.Purpose.PASSWORD_RESET);
+        authService.requestOtp(request);
+        return OtpRequestResponseDto.accepted(null);
+    }
+
+    @PostMapping("/otp/request/pin-reset")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public OtpRequestResponseDto requestPinResetOtp(
+            @Valid @RequestBody OtpRequestDto request) {
+        request.setPurpose(OtpRequestDto.Purpose.PIN_RESET);
+        authService.requestOtp(request);
+        return OtpRequestResponseDto.accepted(null);
+    }
+
+    // ==========================================================
+    // OTP verify — one endpoint per purpose
+    // ==========================================================
+
+    @PostMapping("/otp/verify/activation")
+    public AuthTokenResponseDto verifyActivationOtp(
+            @Valid @RequestBody OtpVerifyDto request) {
+        request.setPurpose(OtpVerifyDto.Purpose.ACTIVATION);
+        return authService.verifyOtp(request);
+    }
+
+    @PostMapping("/otp/verify/password-reset")
+    public AuthTokenResponseDto verifyPasswordResetOtp(
+            @Valid @RequestBody OtpVerifyDto request) {
+        request.setPurpose(OtpVerifyDto.Purpose.PASSWORD_RESET);
+        return authService.verifyOtp(request);
+    }
+
+    @PostMapping("/otp/verify/pin-reset")
+    public AuthTokenResponseDto verifyPinResetOtp(
+            @Valid @RequestBody OtpVerifyDto request) {
+        request.setPurpose(OtpVerifyDto.Purpose.PIN_RESET);
         return authService.verifyOtp(request);
     }
 
     // ==========================================================
-    // Credential setup (reset flows)
+    // Credential setup — these are NOT otp/verify endpoints
     // ==========================================================
 
     @PostMapping("/password/set")
-    public AuthTokenResponseDto setPassword(@Valid @RequestBody PasswordSetDto request) {
+    public AuthTokenResponseDto setPassword(
+            @Valid @RequestBody PasswordSetDto request) {
         return authService.setPassword(request);
     }
 
     @PostMapping("/pin/set")
-    public AuthTokenResponseDto setPin(@Valid @RequestBody PinSetDto request) {
+    public AuthTokenResponseDto setPin(
+            @Valid @RequestBody PinSetDto request) {
         return authService.setPin(request);
     }
 
