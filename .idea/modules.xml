@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/sacco-auth-service/sacco-auth-service.iml" filepath="$PROJECT_DIR$/sacco-auth-service/sacco-auth-service.iml" />
       <module fileurl="file://$PROJECT_DIR$/sacco-notification-service/sacco-notification-service.iml" filepath="$PROJECT_DIR$/sacco-notification-service/sacco-notification-service.iml" />
+      <module fileurl="file://$PROJECT_DIR$/sacco-transaction-service/sacco-transaction-service.iml" filepath="$PROJECT_DIR$/sacco-transaction-service/sacco-transaction-service.iml" />
     </modules>
   </component>
 </project>

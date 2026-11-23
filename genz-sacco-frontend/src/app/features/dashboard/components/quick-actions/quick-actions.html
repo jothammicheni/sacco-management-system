@@ -1,0 +1,19 @@
+<section>
+  <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+    Quick Actions
+  </h2>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    @for (action of actions; track action.label) {
+      <a
+        [routerLink]="action.route"
+        class="group flex items-center gap-3 px-4 py-3 rounded-xl border transition text-sm font-medium"
+        [class]="action.primary
+          ? 'bg-brand-800 text-white border-brand-800 hover:bg-brand-900'
+          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300'">
+        <span class="text-lg">{{ action.icon }}</span>
+        <span class="text-left leading-tight">{{ action.label }}</span>
+      </a>
+    }
+  </div>
+</section>

@@ -1,0 +1,69 @@
+<section>
+  <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+    Financial Summary
+  </h2>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+    <!-- Total Deposits -->
+    <div class="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition">
+      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+        Total Deposits
+      </p>
+      <p class="mt-2 text-2xl font-bold text-slate-800">
+        {{ summary() ? formatKES(summary()!.totalDeposits) : '—' }}
+      </p>
+      @if (summary()) {
+        <p class="mt-1 text-xs text-success font-medium">
+          +{{ formatKES(summary()!.depositsChangeThisMonth) }} this month
+        </p>
+      }
+    </div>
+
+    <!-- Share Capital -->
+    <div class="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition">
+      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+        Share Capital
+      </p>
+      <p class="mt-2 text-2xl font-bold text-slate-800">
+        {{ summary() ? formatKES(summary()!.shareCapital) : '—' }}
+      </p>
+      @if (summary()) {
+        <p class="mt-1 text-xs text-slate-500">
+          {{ summary()!.shareCapitalNote }}
+        </p>
+      }
+    </div>
+
+    <!-- Active Loan -->
+    <div class="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition">
+      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+        Active Loan Balance
+      </p>
+      <p class="mt-2 text-2xl font-bold text-slate-800">
+        {{ summary() ? formatKES(summary()!.activeLoanBalance) : '—' }}
+      </p>
+      @if (summary()) {
+        <p class="mt-1 text-xs text-slate-500">
+          {{ summary()!.activeLoanCount }} Loans Active
+        </p>
+      }
+    </div>
+
+    <!-- Loan Limit -->
+    <div class="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition">
+      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+        Loan Limit
+      </p>
+      <p class="mt-2 text-2xl font-bold text-brand-800">
+        {{ summary() ? formatKES(summary()!.loanLimit) : '—' }}
+      </p>
+      @if (summary()) {
+        <p class="mt-1 text-xs text-slate-500">
+          ({{ summary()!.loanLimitMultiple }})
+        </p>
+      }
+    </div>
+
+  </div>
+</section>

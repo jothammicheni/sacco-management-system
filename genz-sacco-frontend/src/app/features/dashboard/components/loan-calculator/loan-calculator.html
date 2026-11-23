@@ -1,0 +1,57 @@
+<div class="bg-white rounded-xl border border-slate-200 p-5 h-full flex flex-col">
+  <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+    Quick Loan Calculator
+  </h2>
+
+  <form [formGroup]="form" class="space-y-4 flex-1" (ngModelChange)="recalculate()">
+
+    <label class="block">
+      <span class="block text-sm font-semibold text-slate-700 mb-1">Amount</span>
+      <div class="flex items-center gap-2">
+        <span class="text-sm text-slate-500">KES</span>
+        <input
+          type="number"
+          formControlName="amount"
+          (change)="recalculate()"
+          class="flex-1 px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm"
+        />
+      </div>
+      <input
+        type="range"
+        min="10000"
+        max="1000000"
+        step="10000"
+        formControlName="amount"
+        (change)="recalculate()"
+        class="w-full mt-2 accent-brand-800"
+      />
+    </label>
+
+    <label class="block">
+      <span class="block text-sm font-semibold text-slate-700 mb-1">Tenure (months)</span>
+      <select
+        formControlName="tenure"
+        (change)="recalculate()"
+        class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm">
+        <option [value]="6">6 months</option>
+        <option [value]="12">12 months</option>
+        <option [value]="24">24 months</option>
+        <option [value]="36">36 months</option>
+        <option [value]="48">48 months</option>
+      </select>
+    </label>
+
+    <div class="p-3 rounded-lg bg-brand-50 border border-brand-100">
+      <p class="text-xs text-brand-700 font-semibold">Estimated Monthly Payment</p>
+      <p class="text-xl font-bold text-brand-900 mt-0.5">
+        {{ estimate() ? formatKES(estimate()!.monthlyInstalment) : '—' }}
+      </p>
+    </div>
+
+    <a
+      routerLink="/loans/apply"
+      class="block w-full text-center px-4 py-2.5 rounded-lg bg-brand-800 hover:bg-brand-900 text-white text-sm font-semibold transition">
+      Proceed to Apply →
+    </a>
+  </form>
+</div>

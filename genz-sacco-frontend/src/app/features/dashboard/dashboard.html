@@ -1,1 +1,104 @@
-<p>dashboard works!</p>
+<div class="min-h-screen bg-slate-50">
+
+  <!-- ============================ HEADER ============================ -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+
+        <!-- Logo -->
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-brand-800 text-white flex items-center justify-center font-bold">
+            GS
+          </div>
+          <span class="font-bold text-slate-800 hidden sm:inline">GenZ SACCO</span>
+        </div>
+
+        <!-- Nav -->
+        <nav class="hidden md:flex items-center gap-1">
+          <a routerLink="/dashboard" class="px-3 py-2 text-sm font-medium text-brand-800 bg-brand-50 rounded-lg">
+            Dashboard
+          </a>
+          <a routerLink="/savings" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
+            My Savings
+          </a>
+          <a routerLink="/loans" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
+            Loans
+          </a>
+          <a routerLink="/guarantors" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
+            Guarantors
+          </a>
+          <a routerLink="/statements" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
+            Statements
+          </a>
+        </nav>
+
+        <!-- Right actions -->
+        <div class="flex items-center gap-3">
+          <button
+            class="relative w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center transition"
+            aria-label="Notifications">
+            <span class="text-lg">🔔</span>
+            @if (profile() && profile()!.notificationsCount > 0) {
+              <span class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
+                {{ profile()!.notificationsCount }}
+              </span>
+            }
+          </button>
+
+          <button
+            (click)="logout()"
+            class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-100 transition">
+            <div class="w-8 h-8 rounded-full bg-brand-100 text-brand-800 flex items-center justify-center font-semibold text-sm">
+              {{ profile()?.firstName?.charAt(0) || '?' }}
+            </div>
+            <span class="text-sm font-medium text-slate-700 hidden sm:inline">
+              Profile
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================ MAIN ============================ -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Welcome row -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-800">
+          Welcome back, {{ profile()?.firstName || '...' }}!
+        </h1>
+        <p class="text-sm text-slate-500 mt-1">
+          Member No: <span class="font-mono font-medium">{{ profile()?.memberNo || '—' }}</span>
+        </p>
+      </div>
+
+      <button
+        (click)="toggleBalances()"
+        class="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-sm font-medium text-slate-700 transition">
+        <span>{{ balancesHidden() ? '👁️' : '🙈' }}</span>
+        {{ balancesHidden() ? 'Show Balances' : 'Hide Balances' }}
+      </button>
+    </div>
+
+    <!-- Guarantor alert (only if there are requests) -->
+    <app-guarantor-alert />
+
+    <!-- Financial summary -->
+    <app-financial-summary [hidden]="balancesHidden()" />
+
+    <!-- Quick actions -->
+    <app-quick-actions />
+
+    <!-- Loans row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <app-active-loan [hidden]="balancesHidden()" />
+      <app-loan-calculator />
+    </div>
+
+    <!-- Recent transactions -->
+    <app-recent-transactions [hidden]="balancesHidden()" />
+
+  </main>
+</div>

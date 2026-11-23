@@ -1,0 +1,45 @@
+<div class="bg-white rounded-xl border border-slate-200 p-5 h-full flex flex-col">
+  <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+    Active Loan Repayment Progress
+  </h2>
+
+  @if (loan(); as l) {
+    <p class="text-sm font-semibold text-slate-800">{{ l.loanType }}</p>
+    <p class="text-xs text-slate-500 font-mono">#{{ l.loanNo }}</p>
+
+    <!-- Progress bar -->
+    <div class="mt-4">
+      <div class="flex items-center justify-between text-xs mb-1">
+        <span class="text-slate-600">{{ l.percentPaid }}% Paid</span>
+        <span class="text-slate-500">
+          {{ formatKES(l.paidAmount) }} / {{ formatKES(l.totalAmount) }}
+        </span>
+      </div>
+      <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+        <div
+          class="h-full bg-brand-700 rounded-full transition-all"
+          [style.width.%]="l.percentPaid"></div>
+      </div>
+    </div>
+
+    <!-- Next instalment -->
+    <div class="mt-4 p-3 rounded-lg bg-slate-50">
+      <p class="text-xs text-slate-500">Next installment</p>
+      <p class="text-sm font-semibold text-slate-800 mt-0.5">
+        {{ formatKES(l.nextInstallmentAmount) }} due on {{ formatDate(l.nextInstallmentDue) }}
+      </p>
+    </div>
+
+    <!-- Pay button -->
+    <div class="mt-auto pt-4">
+      <a
+        routerLink="/loans/{{ l.loanId }}/pay"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-800 hover:bg-brand-900 text-white text-sm font-semibold transition">
+        Pay Now
+        <span>→</span>
+      </a>
+    </div>
+  } @else {
+    <p class="text-sm text-slate-500">No active loans.</p>
+  }
+</div>
