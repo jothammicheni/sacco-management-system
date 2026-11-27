@@ -29,4 +29,6 @@ public final class Topics {
     public static final String USER_ACTIVATED              = "user.activated";
     // ---------- Notification domain ----------
     public static final String NOTIFICATION_REQUESTED = "notification.requested";
+
+    public static final String TRANSACTION_CREATED = "transaction.created";
 }

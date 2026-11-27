@@ -1,6 +1,5 @@
 package com.example.saccotransactionservice.entity;
 
-
 import com.example.saccotransactionservice.enums.AccountCategory;
 import com.example.saccotransactionservice.enums.AccountStatus;
 import jakarta.persistence.*;
@@ -13,7 +12,18 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "ledger_accounts")
+@Table(
+        name = "ledger_accounts",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uq_ledger_accounts_number", columnNames = "account_number"),
+                @UniqueConstraint(name = "uq_ledger_accounts_source_id", columnNames = "source_account_id")
+        },
+        indexes = {
+                @Index(name = "idx_ledger_accounts_member_id", columnList = "member_id"),
+                @Index(name = "idx_ledger_accounts_category", columnList = "account_category"),
+                @Index(name = "idx_ledger_accounts_deleted_at", columnList = "deleted_at")
+        }
+)
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @Setter
@@ -26,10 +36,18 @@ public class LedgerAccount {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * accounts.id from sacco_account_db. NULL for internal SACCO GL accounts
+     * (GL-1001 etc). Set for mirrored member accounts so lifecycle events
+     * (account.frozen, account.closed) can be applied by accountId.
+     */
+    @Column(name = "source_account_id", unique = true)
+    private Long sourceAccountId;
+
     @Column(name = "account_number", nullable = false, unique = true, length = 50)
     private String accountNumber;
 
-    @Column(name = "member_id", length = 36)
+    @Column(name = "member_id", length = 36, columnDefinition = "varchar(36)")
     private String memberId;
 
     @Enumerated(EnumType.STRING)

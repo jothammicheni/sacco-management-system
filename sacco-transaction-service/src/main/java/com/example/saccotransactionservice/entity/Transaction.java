@@ -40,7 +40,7 @@ public class Transaction {
     @Column(name = "transaction_reference", nullable = false, unique = true, updatable = false, length = 100)
     private String transactionReference;
 
-    @Column(name = "member_id", length = 36)
+    @Column(name = "member_id", length = 36 ,columnDefinition = "varchar(36)")
     private String memberId;
 
     @Column(name = "account_number", nullable = false, length = 50)

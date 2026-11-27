@@ -15,8 +15,20 @@ public interface LedgerAccountRepository extends JpaRepository<LedgerAccount, Lo
 
     boolean existsByAccountNumber(String accountNumber);
 
+    /**
+     * accounts.id from sacco_account_db. Used by AccountLifecycleConsumer to
+     * locate the mirror when a lifecycle event (account.frozen, account.closed)
+     * arrives — those events carry only accountId, not accountNumber.
+     */
+    Optional<LedgerAccount> findBySourceAccountId(Long sourceAccountId);
+
     // Acquires a MySQL row lock (SELECT ... FOR UPDATE) to prevent concurrent balance corruption
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT la FROM LedgerAccount la WHERE la.accountNumber = :accountNumber")
     Optional<LedgerAccount> findByAccountNumberForUpdate(@Param("accountNumber") String accountNumber);
+
+    // Same lock, but keyed on sourceAccountId — used by the freeze handler
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT la FROM LedgerAccount la WHERE la.sourceAccountId = :sourceAccountId")
+    Optional<LedgerAccount> findBySourceAccountIdForUpdate(@Param("sourceAccountId") Long sourceAccountId);
 }

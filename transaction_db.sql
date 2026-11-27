@@ -1,5 +1,7 @@
 -- ============================================================
 -- TRANSACTION LEDGER SERVICE DATABASE
+-- Matches entities: LedgerAccount, Transaction, JournalEntry,
+--                   OutboxEvent, ProcessedEvent
 -- ============================================================
 DROP DATABASE IF EXISTS sacco_transaction_db;
 
@@ -10,23 +12,25 @@ USE sacco_transaction_db;
 
 -- 1. Chart of Accounts (SACCO GL + Member Account Mirrors)
 CREATE TABLE ledger_accounts (
-                                 id               BIGINT        NOT NULL AUTO_INCREMENT,
-                                 account_number   VARCHAR(50)   NOT NULL,          -- Matches accounts.account_number or 'GL-1001'
-                                 member_id        CHAR(36)      NULL,              -- NULL for internal SACCO GL accounts
-                                 account_category VARCHAR(20)   NOT NULL,
-                                 account_name     VARCHAR(120)  NOT NULL,
-                                 current_balance  DECIMAL(15,2) NOT NULL DEFAULT 0.00,
-                                 status           VARCHAR(20)   NOT NULL DEFAULT 'ACTIVE',
-                                 created_at       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                 updated_at       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                 id                BIGINT        NOT NULL AUTO_INCREMENT,
+                                 source_account_id BIGINT        NULL,              -- accounts.id from account service; NULL for GL
+                                 account_number    VARCHAR(50)   NOT NULL,          -- Matches accounts.account_number or 'GL-1001'
+                                 member_id         VARCHAR(36)   NULL,              -- NULL for internal SACCO GL accounts
+                                 account_category  VARCHAR(20)   NOT NULL,
+                                 account_name      VARCHAR(120)  NOT NULL,
+                                 current_balance   DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                                 status            VARCHAR(20)   NOT NULL DEFAULT 'ACTIVE',
+                                 created_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                 updated_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
                                      ON UPDATE CURRENT_TIMESTAMP,
-                                 deleted_at       DATETIME      NULL     DEFAULT NULL,
+                                 deleted_at        DATETIME      NULL     DEFAULT NULL,
 
                                  PRIMARY KEY (id),
-                                 UNIQUE KEY uq_ledger_accounts_number (account_number),
-                                 KEY idx_ledger_accounts_member_id  (member_id),
-                                 KEY idx_ledger_accounts_category   (account_category),
-                                 KEY idx_ledger_accounts_deleted_at (deleted_at),
+                                 UNIQUE KEY uq_ledger_accounts_number    (account_number),
+                                 UNIQUE KEY uq_ledger_accounts_source_id (source_account_id),
+                                 KEY idx_ledger_accounts_member_id       (member_id),
+                                 KEY idx_ledger_accounts_category        (account_category),
+                                 KEY idx_ledger_accounts_deleted_at      (deleted_at),
                                  CONSTRAINT chk_ledger_accounts_category
                                      CHECK (account_category IN ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE')),
                                  CONSTRAINT chk_ledger_accounts_status
@@ -36,9 +40,9 @@ CREATE TABLE ledger_accounts (
 -- 2. Transactions Header (Idempotency + Dashboard Feed)
 CREATE TABLE transactions (
                               id                     BIGINT        NOT NULL AUTO_INCREMENT,
-                              transaction_uuid       CHAR(36)      NOT NULL DEFAULT (UUID()),
+                              transaction_uuid       VARCHAR(36)   NOT NULL DEFAULT (UUID()),
                               transaction_reference  VARCHAR(100)  NOT NULL,    -- M-Pesa receipt 'QK89L2M10P' or Cash Voucher 'CASH-HQ-001'
-                              member_id              CHAR(36)      NULL,
+                              member_id              VARCHAR(36)   NULL,
                               account_number         VARCHAR(50)   NOT NULL,    -- Primary member account affected
                               transaction_type       VARCHAR(30)   NOT NULL,
                               payment_channel        VARCHAR(20)   NOT NULL,    -- Maps directly to GL-1001 (MPESA), GL-1002 (BANK), GL-1003 (CASH)
@@ -102,15 +106,18 @@ CREATE TABLE journal_entries (
 ) ENGINE=InnoDB;
 
 -- 4. Kafka Transactional Outbox
+--    payload is JSON because OutboxEvent.payload is a String annotated with
+--    @JdbcTypeCode(SqlTypes.JSON). The Java String holds serialized JSON and
+--    Hibernate coerces it into the JSON column type.
 CREATE TABLE outbox_events (
                                id              BIGINT       NOT NULL AUTO_INCREMENT,
-                               event_id        CHAR(36)     NOT NULL,
+                               event_id        VARCHAR(36)  NOT NULL,
                                aggregate_type  VARCHAR(50)  NOT NULL,
                                aggregate_id    VARCHAR(100) NOT NULL,
                                event_type      VARCHAR(100) NOT NULL,
                                topic           VARCHAR(100) NOT NULL,
                                kafka_key       VARCHAR(100) NOT NULL,
-                               payload         JSON         NOT NULL,
+                               payload         JSON         NOT NULL,           -- serialized JSON string
                                created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                published_at    DATETIME     NULL     DEFAULT NULL,
                                attempts        INT          NOT NULL DEFAULT 0,
@@ -122,21 +129,24 @@ CREATE TABLE outbox_events (
                                KEY idx_outbox_aggregate   (aggregate_type, aggregate_id)
 ) ENGINE=InnoDB;
 
--- 5. Kafka Consumer Idempotency Table
+-- 5. Kafka Consumer Idempotency (Inbox / Dedup)
+--    Composite PK (event_id, consumer) matches ProcessedEvent's @IdClass.
 CREATE TABLE processed_events (
-                                  event_id     CHAR(36)     NOT NULL,
-                                  topic        VARCHAR(100) NOT NULL,
+                                  event_id     VARCHAR(36)  NOT NULL,
+                                  consumer     VARCHAR(100) NOT NULL,
                                   processed_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-                                  PRIMARY KEY (event_id),
-                                  KEY idx_processed_events_topic (topic, processed_at)
+                                  PRIMARY KEY (event_id, consumer),
+                                  KEY idx_processed_at (processed_at)
 ) ENGINE=InnoDB;
 
 -- ============================================================
 -- SEED CORE SACCO GENERAL LEDGER ACCOUNTS
 -- ============================================================
-INSERT INTO ledger_accounts (account_number, member_id, account_category, account_name) VALUES
-                                                                                            ('GL-1001', NULL, 'ASSET',   'M-Pesa Paybill Float Account'),
-                                                                                            ('GL-1002', NULL, 'ASSET',   'SACCO Main Bank Account'),
-                                                                                            ('GL-1003', NULL, 'ASSET',   'HQ Cash Vault / Teller Till'),
-                                                                                            ('GL-4001', NULL, 'REVENUE', 'Transaction & Withdrawal Fees');
+INSERT INTO ledger_accounts
+(source_account_id, account_number, member_id, account_category, account_name)
+VALUES
+    (NULL, 'GL-1001', NULL, 'ASSET',   'M-Pesa Paybill Float Account'),
+    (NULL, 'GL-1002', NULL, 'ASSET',   'SACCO Main Bank Account'),
+    (NULL, 'GL-1003', NULL, 'ASSET',   'HQ Cash Vault / Teller Till'),
+    (NULL, 'GL-4001', NULL, 'REVENUE', 'Transaction & Withdrawal Fees');

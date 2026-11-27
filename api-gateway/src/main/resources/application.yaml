@@ -70,6 +70,16 @@ spring:
                 name: notificationServiceCB
                 fallbackUri: forward:/fallback/notification
 
+        - id: transaction-service
+          uri: http://localhost:8090            # ← changed
+          predicates:
+             - Path=/api/v1/ledger/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: notificationServiceCB
+                fallbackUri: forward:/fallback/transaction
+
 jwt:
   secret: dev-only-jwt-secret-do-not-use-in-production-1234567890
 

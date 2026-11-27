@@ -3,14 +3,15 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.2.0</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <groupId>com.example</groupId>
+        <artifactId>sacco-parent</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../sacco-parent/pom.xml</relativePath>
     </parent>
+
     <groupId>com.example</groupId>
     <artifactId>sacco-transaction-service</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>sacco-transaction-service</name>
     <description>sacco-transaction-service</description>
     <url/>
@@ -62,11 +63,11 @@
         </dependency>
 
         <!-- ============ Shared event contracts ============ -->
-<!--        <dependency>-->
-<!--            <groupId>com.example</groupId>-->
-<!--            <artifactId>sacco-events</artifactId>-->
-<!--            &lt;!&ndash; no version — managed by sacco-parent &ndash;&gt;-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>sacco-events</artifactId>
+            <!-- no version — managed by sacco-parent -->
+        </dependency>
 
         <!-- ============ Lombok ============ -->
         <dependency>

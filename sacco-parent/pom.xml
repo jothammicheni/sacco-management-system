@@ -23,7 +23,9 @@
         <module>../sacco-events</module>
         <module>../sacco-member-service</module>
         <module>../sacco-account-service</module>
-<!--        <module>../sacco-loan-service</module>-->
+        <module>../sacco-transaction-service</module>
+
+        <!--        <module>../sacco-loan-service</module>-->
 <!--        <module>../sacco-notification-service</module>-->
     </modules>
 

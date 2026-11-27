@@ -1,13 +1,25 @@
-package com.sacco.transaction.domain.entity;
+package com.example.saccotransactionservice.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Entity
-@Table(name = "processed_events")
+@Table(
+        name = "processed_events",
+        indexes = {
+                @Index(name = "idx_processed_at", columnList = "processed_at")
+        }
+)
+@IdClass(ProcessedEvent.ProcessedEventId.class)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,13 +28,39 @@ import java.time.LocalDateTime;
 public class ProcessedEvent {
 
     @Id
-    @Column(name = "event_id", nullable = false, length = 36)
+    @Column(name = "event_id", nullable = false, columnDefinition = "VARCHAR(36)")
     private String eventId;
 
-    @Column(name = "topic", nullable = false, length = 100)
-    private String topic;
+    @Id
+    @Column(name = "consumer", nullable = false, length = 100)
+    private String consumer;
 
     @CreationTimestamp
     @Column(name = "processed_at", nullable = false, updatable = false)
     private LocalDateTime processedAt;
+
+    // ---------- Composite key class ----------
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ProcessedEventId implements Serializable {
+
+        private String eventId;
+        private String consumer;
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof ProcessedEventId that)) return false;
+            return Objects.equals(eventId, that.eventId)
+                    && Objects.equals(consumer, that.consumer);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(eventId, consumer);
+        }
+    }
 }
